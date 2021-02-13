@@ -14,7 +14,7 @@ const defaultConfig = {
 }
 
 type ShakeConfig = typeof defaultConfig
-type ShakeConfigPartial = Partial<ShakeConfig>
+export type ShakeConfigPartial = Partial<ShakeConfig>
 
 export interface ShakeController {
   getIntensity: () => number
