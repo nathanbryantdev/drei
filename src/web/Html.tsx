@@ -7,16 +7,13 @@ import { ReactThreeFiber, useFrame, useThree } from 'react-three-fiber'
 const v1 = new Vector3()
 const v2 = new Vector3()
 const v3 = new Vector3()
-
-function defaultCalculatePosition(el: Object3D, camera: Camera, size: { width: number; height: number }) {
+function calculatePosition(el: Object3D, camera: Camera, size: { width: number; height: number }) {
   const objectPos = v1.setFromMatrixPosition(el.matrixWorld)
   objectPos.project(camera)
   const widthHalf = size.width / 2
   const heightHalf = size.height / 2
   return [objectPos.x * widthHalf + widthHalf, -(objectPos.y * heightHalf) + heightHalf]
 }
-
-export type CalculatePosition = typeof defaultCalculatePosition
 
 function isObjectBehindCamera(el: Object3D, camera: Camera) {
   const objectPos = v1.setFromMatrixPosition(el.matrixWorld)
@@ -26,16 +23,19 @@ function isObjectBehindCamera(el: Object3D, camera: Camera) {
   return deltaCamObj.angleTo(camDir) > Math.PI / 2
 }
 
-function objectScale(el: Object3D, camera: Camera) {
-  if (camera instanceof PerspectiveCamera) {
-    const objectPos = v1.setFromMatrixPosition(el.matrixWorld)
-    const cameraPos = v2.setFromMatrixPosition(camera.matrixWorld)
-    const vFOV = (camera.fov * Math.PI) / 180
-    const dist = objectPos.distanceTo(cameraPos)
+function objectScale(el, camera) {
+  const objectPos = v1.setFromMatrixPosition(el.matrixWorld)
+  const cameraPos = v2.setFromMatrixPosition(camera.matrixWorld)
+  const vFOV = (camera.fov * Math.PI) / 180
+  const dist = objectPos.distanceTo(cameraPos)
+
+  if (camera instanceof OrthographicCamera) {
+    return 1 / ((2 * Math.tan(vFOV / 2) * dist) / camera.zoom)
+  } else if (camera instanceof PerspectiveCamera) {
     return 1 / (2 * Math.tan(vFOV / 2) * dist)
+  } else {
+    return 1
   }
-  if (camera instanceof OrthographicCamera) return camera.zoom
-  return 1
 }
 
 function objectZIndex(el: Object3D, camera: Camera, zIndexRange: Array<number>) {
@@ -49,6 +49,7 @@ function objectZIndex(el: Object3D, camera: Camera, zIndexRange: Array<number>) 
   }
   return undefined
 }
+
 export interface HtmlProps
   extends Omit<Assign<React.HTMLAttributes<HTMLDivElement>, ReactThreeFiber.Object3DNode<Group, typeof Group>>, 'ref'> {
   prepend?: boolean
@@ -58,7 +59,6 @@ export interface HtmlProps
   portal?: React.MutableRefObject<HTMLElement>
   scaleFactor?: number
   zIndexRange?: Array<number>
-  calculatePosition?: CalculatePosition
 }
 
 export const Html = React.forwardRef(
@@ -74,7 +74,6 @@ export const Html = React.forwardRef(
       portal,
       scaleFactor,
       zIndexRange = [16777271, 0],
-      calculatePosition = defaultCalculatePosition,
       ...props
     }: HtmlProps,
     ref: React.Ref<HTMLDivElement>
